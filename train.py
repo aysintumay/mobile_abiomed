@@ -1,5 +1,6 @@
 import argparse
 import random
+import pickle
 
 import gym
 import d4rl
@@ -30,6 +31,7 @@ def get_args():
     parser.add_argument("--task", type=str, default="walker2d-medium-expert-v2")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--dataset-path", type=str, default=None, help="Path to saved d4rl dataset pickle file")
 
     known_args, _ = parser.parse_known_args()
     default_args = loaded_args[known_args.task]
@@ -41,14 +43,25 @@ def get_args():
 
 def train(args=get_args()):
     # create env and dataset
-    assert args.domain in ["gym", "adroit", "neorl"]
-    if args.domain == "neorl":
-        task, version, data_type = tuple(args.task.split("-"))
-        env = neorl.make(task+'-'+version)
-        dataset = load_neorl_dataset(env, data_type)
+    if args.dataset_path:
+        # Load dataset from pickle file
+        with open(args.dataset_path, 'rb') as f:
+            dataset = pickle.load(f)
+        # Still need to create env for environment specs
+        if hasattr(args, 'domain') and args.domain == "neorl":
+            task, version, data_type = tuple(args.task.split("-"))
+            env = neorl.make(task+'-'+version)
+        else:
+            env = gym.make(args.task)
     else:
-        env = gym.make(args.task)
-        dataset = qlearning_dataset(env)
+        assert args.domain in ["gym", "adroit", "neorl"]
+        if args.domain == "neorl":
+            task, version, data_type = tuple(args.task.split("-"))
+            env = neorl.make(task+'-'+version)
+            dataset = load_neorl_dataset(env, data_type)
+        else:
+            env = gym.make(args.task)
+            dataset = qlearning_dataset(env)
     if args.norm_reward:
         # dataset = normalize_rewards(dataset)
         r_mean, r_std = dataset["rewards"].mean(), dataset["rewards"].std()
