@@ -1,5 +1,8 @@
 import numpy as np
-
+def termination_fn_abiomed(obs, act, next_obs):
+        #no termination policy
+        done = np.array([False]*obs.shape[0])
+        return done
 
 def termination_fn_halfcheetah(obs, act, next_obs):
     assert len(obs.shape) == len(next_obs.shape) == len(act.shape) == 2
@@ -135,5 +138,7 @@ def get_termination_fn(task):
         return terminaltion_fn_door
     elif 'hammer' in task:
         return terminaltion_fn_hammer
+    elif 'abiomed' in task:
+        return termination_fn_abiomed
     else:
         raise np.zeros

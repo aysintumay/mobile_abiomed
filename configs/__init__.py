@@ -1,6 +1,7 @@
 from .gym import *
 from .adroit import *
 from .neorl import *
+from .abiomed import *
 
 
 loaded_args = {
@@ -17,7 +18,7 @@ loaded_args = {
     "halfcheetah-medium-expert-v2": halfcheetah_medium_expert_args,
     "hopper-medium-expert-v2": hopper_medium_expert_args,
     "walker2d-medium-expert-v2": walker2d_medium_expert_args,
-
+    "abiomed": abiomed_args,
     # d4rl adroit
     "pen-cloned-v1": pen_cloned_args,
     "pen-human-v1": pen_human_args,

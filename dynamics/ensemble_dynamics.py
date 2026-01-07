@@ -246,5 +246,6 @@ class EnsembleDynamics(BaseDynamics):
         self.scaler.save_scaler(save_path)
     
     def load(self, load_path: str) -> None:
+        print("Loading dynamics model from {}".format(load_path))
         self.model.load_state_dict(torch.load(os.path.join(load_path, "dynamics.pth"), map_location=self.model.device))
         self.scaler.load_scaler(load_path)
