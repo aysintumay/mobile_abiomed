@@ -1,5 +1,6 @@
 import argparse
 import random
+import pickle
 
 import gym
 import d4rl
@@ -17,18 +18,12 @@ from dynamics import EnsembleDynamics
 from utils.scaler import StandardScaler
 from utils.termination_fns import get_termination_fn
 from utils.load_dataset import qlearning_dataset, load_neorl_dataset, normalize_rewards
-from utils.buffer import ReplayBuffer, ReplayBufferAbiomed, get_env_data
+from utils.buffer import ReplayBuffer
 from utils.logger import Logger, make_log_dirs
 from utils.policy_trainer import PolicyTrainer
 from policies import MOBILEPolicy
 from configs import loaded_args
 
-import sys
-import os
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", '..')))
-
-from noisy_mujoco.abiomed_env.rl_env import AbiomedRLEnvFactory
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -36,36 +31,8 @@ def get_args():
     parser.add_argument("--task", type=str, default="walker2d-medium-expert-v2")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument('--dynamics_path', type=str, default="")
-     # ============ abiomed environment arguments ============
-    parser.add_argument("--model_name", type=str, default="10min_1hr_all_data")
-    parser.add_argument("--model_path", type=str, default=None)
-    parser.add_argument("--data_path", type=str, default=None)
-    parser.add_argument("--max_steps", type=int, default=6)
-    parser.add_argument("--gamma1", type=float, default=0.0)
-    parser.add_argument("--gamma2", type=float, default=0.0)
-    parser.add_argument("--gamma3", type=float, default=0.0)
-    parser.add_argument(
-        "--noise_rate",
-        type=float,
-        help="Portion of data to be noisy with probability",
-        default=0.0,
-    )
-    parser.add_argument(
-        "--noise_scale", type=float, help="magnitude of noise", default=0.0
-    )
-    parser.add_argument(
-        "--normalize_rewards",
-        action="store_true",
-        help="Normalize rewards in the Abiomed environment",
-    )
-    parser.add_argument(
-        "--action_space_type",
-        type=str,
-        default="continuous",
-        choices=["continuous", "discrete"],
-        help="Type of action space for the environment",
-    )
+    parser.add_argument("--dataset-path", type=str, default=None, help="Path to saved d4rl dataset pickle file")
+
     known_args, _ = parser.parse_known_args()
     default_args = loaded_args[known_args.task]
     for arg_key, default_value in default_args.items():
@@ -76,39 +43,29 @@ def get_args():
 
 def train(args=get_args()):
     # create env and dataset
-    assert args.domain in ["gym", "adroit", "neorl", 'abiomed']
-    if args.domain == "neorl":
-        task, version, data_type = tuple(args.task.split("-"))
-        env = neorl.make(task+'-'+version)
-        dataset = load_neorl_dataset(env, data_type)
-    elif args.domain == "abiomed":
-        
-        env = AbiomedRLEnvFactory.create_env(
-            model_name=args.model_name,
-            model_path=args.model_path,
-            data_path=args.data_path,
-            max_steps=args.max_steps,
-            gamma1=args.gamma1,
-            gamma2=args.gamma2,
-            gamma3=args.gamma3,
-            action_space_type=args.action_space_type,
-            reward_type="smooth",
-            normalize_rewards=True,
-            noise_rate=args.noise_rate,
-            noise_scale=args.noise_scale,
-            seed=args.seed,
-            device=args.device if torch.cuda.is_available() else "cpu",
-        )
+    if args.dataset_path:
+        # Load dataset from pickle file
+        with open(args.dataset_path, 'rb') as f:
+            dataset = pickle.load(f)
+        # Still need to create env for environment specs
+        if hasattr(args, 'domain') and args.domain == "neorl":
+            task, version, data_type = tuple(args.task.split("-"))
+            env = neorl.make(task+'-'+version)
+        else:
+            env = gym.make(args.task)
     else:
-        env = gym.make(args.task)
-        dataset = qlearning_dataset(env)
+        assert args.domain in ["gym", "adroit", "neorl"]
+        if args.domain == "neorl":
+            task, version, data_type = tuple(args.task.split("-"))
+            env = neorl.make(task+'-'+version)
+            dataset = load_neorl_dataset(env, data_type)
+        else:
+            env = gym.make(args.task)
+            dataset = qlearning_dataset(env)
     if args.norm_reward:
         # dataset = normalize_rewards(dataset)
         r_mean, r_std = dataset["rewards"].mean(), dataset["rewards"].std()
         dataset["rewards"] = (dataset["rewards"] - r_mean) / (r_std + 1e-3)
-    state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
-    max_action = float(env.action_space.high[0])
 
     args.obs_shape = env.observation_space.shape
     args.action_dim = np.prod(env.action_space.shape)
@@ -181,7 +138,7 @@ def train(args=get_args()):
     )
 
     if args.load_dynamics_path:
-        dynamics.load(args.dynamics_path)
+        dynamics.load(args.load_dynamics_path)
 
     # create policy
     policy = MOBILEPolicy(
@@ -198,39 +155,26 @@ def train(args=get_args()):
         deterministic_backup=args.deterministic_backup,
         max_q_backup=args.max_q_backup
     )
-    if args.domain == 'abiomed':
-        # create buffer
-        
-        real_buffer = ReplayBufferAbiomed(state_dim, action_dim, device=args.device)
 
-        dataset1 = env.world_model.data_train
-        dataset2 = env.world_model.data_val
-        dataset3 = env.world_model.data_test
-        dataset = [dataset1, dataset2, dataset3]
-
-        fake_buffer = ReplayBufferAbiomed(state_dim, action_dim, device=args.device)
-
-        real_buffer.convert_abiomed(dataset, env)
-    else:
     # create buffer
-        real_buffer = ReplayBuffer(
-            buffer_size=len(dataset["observations"]),
-            obs_shape=args.obs_shape,
-            obs_dtype=np.float32,
-            action_dim=args.action_dim,
-            action_dtype=np.float32,
-            device=args.device
-        )
-        real_buffer.load_dataset(dataset)
+    real_buffer = ReplayBuffer(
+        buffer_size=len(dataset["observations"]),
+        obs_shape=args.obs_shape,
+        obs_dtype=np.float32,
+        action_dim=args.action_dim,
+        action_dtype=np.float32,
+        device=args.device
+    )
+    real_buffer.load_dataset(dataset)
 
-        fake_buffer = ReplayBuffer(
-            buffer_size=args.rollout_batch_size*args.rollout_length*args.model_retain_epochs,
-            obs_shape=args.obs_shape,
-            obs_dtype=np.float32,
-            action_dim=args.action_dim,
-            action_dtype=np.float32,
-            device=args.device
-        )
+    fake_buffer = ReplayBuffer(
+        buffer_size=args.rollout_batch_size*args.rollout_length*args.model_retain_epochs,
+        obs_shape=args.obs_shape,
+        obs_dtype=np.float32,
+        action_dim=args.action_dim,
+        action_dtype=np.float32,
+        device=args.device
+    )
 
     # log
     log_dirs = make_log_dirs(
@@ -271,9 +215,7 @@ def train(args=get_args()):
             max_epochs_since_update=args.max_epochs_since_update,
             max_epochs=args.dynamics_max_epochs
         )
-    else: 
-        print(args.dynamics_path)
-        dynamics.load(args.dynamics_path)
+    
     policy_trainer.train()
 
 

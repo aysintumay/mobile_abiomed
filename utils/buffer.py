@@ -5,24 +5,8 @@ from typing import Optional, Union, Tuple, Dict
 import sys
 import os
 import tqdm
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", '..')))
 
-from noisy_mujoco.abiomed_env.rl_env import AbiomedRLEnvFactory
 
-from noisy_mujoco.abiomed_env.cost_func import (compute_acp_cost, 
-                                                unstable_percentage_model_merged,
-                                                unstable_percentage_model_gradient,
-                                                weaning_score_model_merged,
-                                                compute_acp_cost_model,
-                                                weaning_score_model_gradient,
-                                                compute_air_aggregate_gradient_threshold,
-                                                compute_map_model_air, 
-                                                compute_hr_model_air,
-                                                compute_pulsatility_model_air,
-                                                aggregate_air_model, 
-                                                weaning_score_model, 
-                                                unstable_percentage_model, 
-                                                super_metric)
 
 def get_env_data(args, val=None):
     if args.env[0].isupper():
