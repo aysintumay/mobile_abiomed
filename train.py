@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--dataset-path", type=str, default=None, help="Path to saved d4rl dataset pickle file")
-
+    parser.add_argument('--dynamics_path', type=str, default="")
     known_args, _ = parser.parse_known_args()
     default_args = loaded_args[known_args.task]
     for arg_key, default_value in default_args.items():
@@ -208,13 +208,15 @@ def train(args=get_args()):
     )
 
     # train
-    if not load_dynamics_model:
+    if args.dynamics_path == "":
         dynamics.train(
             real_buffer.sample_all(),
             logger,
             max_epochs_since_update=args.max_epochs_since_update,
             max_epochs=args.dynamics_max_epochs
         )
+    else:
+        dynamics.load(args.dynamics_path)
     
     policy_trainer.train()
 
