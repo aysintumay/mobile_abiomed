@@ -8,3 +8,6 @@
 **/*.txt
 **/.vscode
 **/_log
+walker2d-medium-expert-v2_sparse3
+hopper-medium-expert-v2_sparse3
+halfcheetah-medium-expert-v2_sparse3

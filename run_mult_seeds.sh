@@ -51,6 +51,9 @@ echo "Log directory: $LOG_DIR"
 echo "Additional arguments: $ADDITIONAL_ARGS"
 echo "=========================================="
 
+# Create log directory if it doesn't exist
+mkdir -p "$LOG_DIR"
+
 # Array to store background process IDs
 PIDS=()
 
@@ -62,6 +65,21 @@ do
     # Create a log file for this seed
     LOG_FILE="$LOG_DIR/train_seed_${SEED}.log"
 
+    # Construct dynamics model path for this seed
+    # Pattern: log/{task}/seed_{seed}&timestamp_{timestamp}/model/dynamics.pth
+    # Note: We need to pass the directory (model/) not the full file path
+    SEED_DYNAMICS_FILE=$(find log/$TASK -type f -path "*/seed_${SEED}&timestamp_*/model/dynamics.pth" 2>/dev/null | head -n 1)
+
+    if [ -z "$SEED_DYNAMICS_FILE" ]; then
+        echo "WARNING: No dynamics model found for seed $SEED at log/$TASK/seed_${SEED}&timestamp_*/model/dynamics.pth"
+        SEED_DYNAMICS_PATH=""
+    else
+        # Extract the directory path (remove /dynamics.pth from the end)
+        SEED_DYNAMICS_PATH=$(dirname "$SEED_DYNAMICS_FILE")
+        echo "  Found dynamics model: $SEED_DYNAMICS_FILE"
+        echo "  Using dynamics path: $SEED_DYNAMICS_PATH"
+    fi
+
     # Build the command with optional parameters
     CMD="python train.py --task \"$TASK\" --seed \"$SEED\""
 
@@ -69,8 +87,11 @@ do
         CMD="$CMD --dataset-path \"$DATASET_PATH\""
     fi
 
-    if [ -n "$DYNAMICS_PATH" ]; then
-        CMD="$CMD --dynamics_path \"$DATASET_PATH\""
+    # Use seed-specific dynamics path if found
+    if [ -n "$SEED_DYNAMICS_PATH" ]; then
+        CMD="$CMD --dynamics_path \"$SEED_DYNAMICS_PATH\""
+    elif [ -n "$DYNAMICS_PATH" ]; then
+        CMD="$CMD --dynamics_path \"$DYNAMICS_PATH\""
     fi
 
     if [ -n "$DEVICE" ]; then
