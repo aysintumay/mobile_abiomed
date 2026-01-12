@@ -8,7 +8,7 @@ import neorl
 
 import numpy as np
 import torch
-
+from  utils.eval_abiomed import eval_policy_simple
 
 from models.nets import MLP
 from models.actor_critic import ActorProb, Critic
@@ -217,7 +217,7 @@ def train(args=get_args()):
         )
     
     policy_trainer.train()
-
+    eval_policy_simple(policy_trainer.policy, args.domain, args.seed,  args.eval_episodes, args=args)
 
 if __name__ == "__main__":
     train()
