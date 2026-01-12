@@ -12,7 +12,7 @@ import pickle
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from noisy_mujoco.abiomed_env.rl_env import AbiomedRLEnvFactory
+# from noisy_mujoco.abiomed_env.rl_env import AbiomedRLEnvFactory
 
 from noisy_mujoco.abiomed_env.cost_func import (compute_acp_cost, 
                                                 unstable_percentage_model_merged,
@@ -31,7 +31,7 @@ from noisy_mujoco.abiomed_env.cost_func import (compute_acp_cost,
 
 
 
-def eval_policy_simple(policy, env_name, seed,  eval_episodes=10, args=None, seed_offset=100):
+def eval_policy_simple(policy, env_name, seed,  eval_episodes=100, args=None, seed_offset=100):
     """
     Simplified evaluation function that doesn't require logger or video recorder.
     Compatible with both standard gym environments and abiomed environment.
@@ -93,7 +93,7 @@ def eval_policy_simple(policy, env_name, seed,  eval_episodes=10, args=None, see
             truncated = False
 
             while not (done or truncated):
-                action = policy.select_action(s_norm)
+                action = policy.select_action(state)
                 next_state, reward, done, truncated, _ = eval_env.step(action)
                 avg_reward += reward
                 ep_states.append(state)
