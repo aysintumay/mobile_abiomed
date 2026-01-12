@@ -1,0 +1,43 @@
+pybullet build time: Jan 29 2025 23:19:57
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+Warning: All of online environments libraries in D4RL have been moved ]8;;https://github.com/Farama-Foundation/Gymnasium\Gymnasium]8;;\, ]8;;https://github.com/Farama-Foundation/MiniGrid\MiniGrid]8;;\ and ]8;;https://github.com/Farama-Foundation/Gymnasium-Robotics\Gymnasium-Robotics]8;;\, and all offline datasets in D4RL have been moved to ]8;;https://github.com/Farama-Foundation/Minari\Minari]8;;\.
+These new versions include large bug fixes, new versions of Python, and are where all new development will continue. Please upgrade these libraries as soon as you're able to do so.
+If you'd like to read more about the story behind this switch, please check out ]8;;https://farama.org/Announcing-Minari\this blog post]8;;\.
+/home/ubuntu/miniconda3/envs/mobile/lib/python3.8/site-packages/Cython/Distutils/old_build_ext.py:15: DeprecationWarning: dep_util is Deprecated. Use functions from setuptools instead.
+  from distutils.dep_util import newer, newer_group
+Warning: Flow failed to import. Set the environment variable D4RL_SUPPRESS_IMPORT_ERROR=1 to suppress this message.
+No module named 'flow'
+/home/ubuntu/miniconda3/envs/mobile/lib/python3.8/site-packages/glfw/__init__.py:917: GLFWError: (65550) b'X11: The DISPLAY environment variable is missing'
+  warnings.warn(message, GLFWError)
+Warning: CARLA failed to import. Set the environment variable D4RL_SUPPRESS_IMPORT_ERROR=1 to suppress this message.
+No module named 'carla'
+/home/ubuntu/miniconda3/envs/mobile/lib/python3.8/site-packages/pybullet_envs/env_bases.py:8: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+  from pkg_resources import parse_version
+usage: train.py [-h] [--algo-name ALGO_NAME] [--task TASK] [--seed SEED]
+                [--device DEVICE] [--dataset-path DATASET_PATH]
+                [--domain DOMAIN] [--actor_lr ACTOR_LR]
+                [--critic_lr CRITIC_LR] [--hidden_dims HIDDEN_DIMS]
+                [--gamma GAMMA] [--tau TAU] [--alpha ALPHA]
+                [--auto_alpha AUTO_ALPHA] [--target_entropy TARGET_ENTROPY]
+                [--alpha_lr ALPHA_LR]
+                [--deterministic_backup DETERMINISTIC_BACKUP]
+                [--max_q_backup MAX_Q_BACKUP] [--norm_reward NORM_REWARD]
+                [--num_q_ensemble NUM_Q_ENSEMBLE] [--dynamics_lr DYNAMICS_LR]
+                [--dynamics_max_epochs DYNAMICS_MAX_EPOCHS]
+                [--max_epochs_since_update MAX_EPOCHS_SINCE_UPDATE]
+                [--dynamics_hidden_dims DYNAMICS_HIDDEN_DIMS]
+                [--dynamics_weight_decay DYNAMICS_WEIGHT_DECAY]
+                [--n_ensemble N_ENSEMBLE] [--n_elites N_ELITES]
+                [--rollout_freq ROLLOUT_FREQ]
+                [--rollout_batch_size ROLLOUT_BATCH_SIZE]
+                [--rollout_length ROLLOUT_LENGTH]
+                [--penalty_coef PENALTY_COEF] [--num_samples NUM_SAMPLES]
+                [--model_retain_epochs MODEL_RETAIN_EPOCHS]
+                [--real_ratio REAL_RATIO]
+                [--load_dynamics_path LOAD_DYNAMICS_PATH] [--epoch EPOCH]
+                [--step_per_epoch STEP_PER_EPOCH]
+                [--eval_episodes EVAL_EPISODES] [--batch_size BATCH_SIZE]
+                [--lr_scheduler LR_SCHEDULER]
+train.py: error: unrecognized arguments: Running training in parallel for task: halfcheetah-medium-expert-v2
