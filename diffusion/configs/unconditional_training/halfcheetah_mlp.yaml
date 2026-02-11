@@ -1,0 +1,28 @@
+# mlp_config.yaml
+npz: /public/d4rl/diffusion_processed/halfcheetah-medium-v2_train.npz
+out: /data/sparse_d4rl/pretrained/unconditional/ddim_mlp_halfcheetah_medium_v2
+
+# training
+epochs: 200
+batch: 512
+lr: 0.0002
+wd: 0.0
+timesteps: 50000
+checkpoint_every_epochs: 20
+seed: 0
+device: cuda
+
+# model
+model: mlp
+hidden: 512
+time_emb: 128
+layers: 3
+dropout: 0.0
+
+# logging
+wandb: true
+wandb_project: GORMPO
+wandb_entity: jhhuang_chloe
+wandb_run: unconditional_ddim_mlp_halfcheetah_medium_v2
+log_every: 100
+samples_every: 1

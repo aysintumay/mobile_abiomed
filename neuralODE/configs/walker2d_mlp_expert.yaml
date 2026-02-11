@@ -1,0 +1,21 @@
+npz: /data/gormpo/diffusion_processed/walker2d_medium_expert-v2_train.npz
+out: /data/sparse_d4rl/pretrained/neural_ode/walker2d_medium_expert_v2_256
+
+epochs: 10
+batch: 2048
+lr: 1.0e-3
+wd: 0.0
+
+hidden_dims: [256, 256]
+activation: silu
+time_dependent: true
+solver: dopri5
+t0: 0.0
+t1: 1.0
+rtol: 1.0e-5
+atol: 1.0e-5
+
+log_every: 100
+checkpoint_every: 2
+device: cuda
+seed: 0

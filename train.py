@@ -5,7 +5,8 @@ import pickle
 import gym
 import d4rl
 import neorl
-
+import json
+import os
 import numpy as np
 import torch
 
@@ -23,14 +24,36 @@ from utils.logger import Logger, make_log_dirs
 from utils.policy_trainer import PolicyTrainer
 from policies import MOBILEPolicy
 from configs import loaded_args
+from vae_module.vae import VAE
+from realnvp_module.realnvp import RealNVP
+from kde_module.kde import PercentileThresholdKDE
 
+
+from neuralODE.neural_ode_density import ContinuousNormalizingFlow, ODEFunc
+from neuralODE.neural_ode_ood import NeuralODEOOD
+
+from diffusion.monte_carlo_sampling_unconditional import build_model_from_ckpt
+from diffusion.ddim_training_unconditional import log_prob_elbo
+from diffusers.schedulers.scheduling_ddim import DDIMScheduler
+from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
+import yaml
 
 def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--algo-name", type=str, default="mobile")
+    print("Running", __file__)
+    config_parser = argparse.ArgumentParser(add_help=False)
+    config_parser.add_argument("--config", type=str, default="config_gormpo/halfcheetah_medium_expert_72.5.yaml")
+    config_args, remaining_argv = config_parser.parse_known_args()
+    if config_args.config:
+        with open(config_args.config, "r") as f:
+            config = yaml.safe_load(f)
+            config = {k.replace("-", "_"): v for k, v in config.items()}
+    else:
+        config = {}
+    parser = argparse.ArgumentParser(parents=[config_parser])
+    parser.add_argument("--algo-name", type=str, default="mobile_gormpo")
     parser.add_argument("--task", type=str, default="walker2d-medium-expert-v2")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--device", type=str, default="cuda:3" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--dataset-path", type=str, default=None, help="Path to saved d4rl dataset pickle file")
     parser.add_argument('--dynamics_path', type=str, default="")
     known_args, _ = parser.parse_known_args()
@@ -38,7 +61,61 @@ def get_args():
     for arg_key, default_value in default_args.items():
         parser.add_argument(f'--{arg_key}', default=default_value, type=type(default_value))
 
-    return parser.parse_args()
+
+    parser.set_defaults(**config)
+
+    # 5. Final parse (command line still wins over YAML)
+    args = parser.parse_args(remaining_argv)
+    args.config = config_args.config
+    print(args.config)
+
+    return args
+
+
+
+class DiffusionDensityWrapper:
+    """Wrapper for diffusion model to provide score_samples interface."""
+
+    def __init__(self, model, scheduler, target_dim, device):
+        self.model = model
+        self.scheduler = scheduler
+        self.target_dim = target_dim
+        self.device = device
+
+    @torch.no_grad()
+    def score_samples(self, x, device=None):
+        """
+        Compute log probability using ELBO from unconditional diffusion model.
+
+        Args:
+            x: Input samples (numpy array or tensor) of shape (batch_size, target_dim)
+            device: Device to use (optional)
+
+        Returns:
+            Log probabilities normalized by target dimension
+        """
+        if device is None:
+            device = self.device
+
+        # Convert to tensor if needed
+        if isinstance(x, np.ndarray):
+            x = torch.from_numpy(x).float()
+
+        x = x.to(device)
+
+        # Compute log probability using ELBO
+        log_probs = log_prob_elbo(
+            model=self.model,
+            scheduler=self.scheduler,
+            x0=x,
+            num_inference_steps=100,
+            device=device,
+        )
+
+        # Normalize by target dimension for consistency
+        log_probs_per_dim = log_probs
+
+        return log_probs_per_dim
 
 
 def train(args=get_args()):
@@ -130,11 +207,96 @@ def train(args=get_args()):
     )
     scaler = StandardScaler()
     termination_fn = get_termination_fn(task=args.task)
+
+
+    if "vae" in args.classifier_model_name:
+        classifier = VAE(
+            # hidden_dims= args.vae_hidden_dims,
+            device=args.device 
+        ).to(args.device )
+        classifier_dict = classifier.load_model(args.classifier_model_name)
+        print("vae laoded")
+    elif "realnvp" in args.classifier_model_name:
+        classifier = RealNVP(
+        device=args.device 
+        ).to(args.device )
+        classifier_dict = classifier.load_model(args.classifier_model_name)
+    elif "kde" in args.classifier_model_name:
+        # Extract device ID from args.device (e.g., "cuda:0" -> 0)
+        # devid = int(args.device.split(":")[-1]) if "cuda" in args.device else 0
+        devid = 2
+        classifier = PercentileThresholdKDE(
+        devid=devid,
+        
+        )
+        classifier_dict = classifier.load_model(args.classifier_model_name, use_gpu=True , devid=devid)
+    elif "neuralODE" in args.classifier_model_name:
+        print("Loading Neural ODE based classifier... for task:", args.task)
+        # Use the new NeuralODEOOD.load_model interface
+        device = args.device if torch.cuda.is_available() else "cpu"
+
+        # Load model using NeuralODEOOD wrapper
+        # target_dim is read from metadata, no need to pass it explicitly
+        classifier_dict = NeuralODEOOD.load_model(
+            save_path=args.classifier_model_name.replace('_model.pt', ''),
+            device=device
+        )
+        # classifier_dict now contains: {'model': ood_model, 'threshold': ..., 'mean': ..., 'std': ...}
+        # Rename 'threshold' to 'thr' for compatibility with transition_model
+        classifier_dict['thr'] = classifier_dict['threshold']
+    elif "diffusion" in args.classifier_model_name:
+        print("Loading Diffusion based classifier... for task:", args.task)
+        # Load model using build_model_from_ckpt from monte_carlo_sampling_unconditional
+        device = args.device
+        ckpt_path = args.classifier_model_name
+        sched_dir = os.path.dirname(ckpt_path) + "/scheduler"
+
+        # Build model
+        model, cfg = build_model_from_ckpt(ckpt_path, device)
+
+        # Get target dimension
+        ckpt = torch.load(ckpt_path, map_location=device)
+        target_dim = ckpt.get("target_dim")
+
+        # Load scheduler
+        try:
+            scheduler = DDIMScheduler.from_pretrained(sched_dir)
+        except Exception:
+            try:
+                scheduler = DDPMScheduler.from_pretrained(sched_dir)
+            except Exception as e:
+                print(f"Warning: Could not load scheduler: {e}")
+                scheduler = DDIMScheduler(
+                    num_train_timesteps=1000,
+                    beta_schedule="linear",
+                    prediction_type="epsilon",
+                )
+
+        # Wrap in our interface
+        diffusion_wrapper = DiffusionDensityWrapper(model, scheduler, target_dim, device)
+
+        # Load threshold from metrics if available
+        thr_path = f"diffusion/monte_carlo_results/{args.task.lower().split('_')[0].split('-')[0]}_unconditional_ddpm/elbo_metrics.json"
+        if os.path.exists(thr_path):
+            with open(thr_path, 'r') as f:
+                metrics = json.load(f)
+            thr = metrics.get("percentile_1.0_logp", 0.0)
+        else:
+            print(f"Warning: Threshold file not found at {thr_path}, using default threshold 0.0")
+            thr = 0.0
+
+        classifier_dict = {'model': diffusion_wrapper, 'thr': thr}
+    
+
     dynamics = EnsembleDynamics(
         dynamics_model,
         dynamics_optim,
         scaler,
-        termination_fn
+        termination_fn,
+        classifier=classifier_dict,
+        penalty_coef = args.penalty_coef,
+        device=args.device
+
     )
 
     if args.load_dynamics_path:

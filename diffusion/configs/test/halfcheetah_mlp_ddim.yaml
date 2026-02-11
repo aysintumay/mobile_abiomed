@@ -1,0 +1,10 @@
+out: /data/sparse_d4rl/pretrained/ddim_mlp_halfcheetah_medium_v2
+
+test_npz: /public/sparse_d4rl/mapped/concat/halfcheetah_one_step_test.npz
+
+scaler: /public/sparse_d4rl/mapped/concat/scaler_halfcheetah_joblib.pkl
+
+num_samples: 10000
+device: cuda
+inference_steps: 50
+

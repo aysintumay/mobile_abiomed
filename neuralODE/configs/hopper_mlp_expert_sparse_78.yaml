@@ -1,0 +1,21 @@
+npz: /public/d4rl/sparse_datasets/diffusion_processed/hopper_medium_expert_sparse_78_train.npz
+out: /public/gormpo/models/hopper_medium_expert_sparse_3/neuralODE
+
+epochs: 20
+batch: 128
+lr: 1.0e-3
+wd: 0.0
+
+hidden_dims: [512, 512]
+activation: silu
+time_dependent: true
+solver: dopri5
+t0: 0.0
+t1: 1.0
+rtol: 1.0e-5
+atol: 1.0e-5
+
+log_every: 100
+checkpoint_every: 2
+device: cuda
+seed: 0

@@ -1,0 +1,28 @@
+# mlp_config.yaml
+npz: /public/d4rl/sparse_datasets/diffusion_processed/halfcheetah_medium_expert_sparse_72.5_train.npz
+out: /public/gormpo/models/halfcheetah_medium_expert_sparse_3/diffusion
+
+# training
+epochs: 100
+batch: 512
+lr: 0.0002
+wd: 0.0
+timesteps: 50000
+checkpoint_every_epochs: 10
+seed: 0
+device: cuda
+
+# model
+model: mlp
+hidden: 512
+time_emb: 128
+layers: 3
+dropout: 0.0
+
+# logging
+wandb: False
+wandb_project: GORMPO
+wandb_entity: jhhuang_chloe
+wandb_run: unconditional_ddim_mlp_halfcheetah_medium_expert_sparse_72.5
+log_every: 100
+samples_every: 1

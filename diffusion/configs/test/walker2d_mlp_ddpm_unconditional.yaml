@@ -1,0 +1,13 @@
+out: /data/sparse_d4rl/pretrained/unconditional/ddim_mlp_walker2d_medium_v2
+
+test_npz: /public/d4rl/diffusion_processed/walker2d-medium-v2_test.npz
+
+model_dir: /data/sparse_d4rl/pretrained/unconditional/ddim_mlp_walker2d_medium_v2
+
+num_samples: 10000
+batch_size: 1000
+device: cuda
+inference_steps: 50
+scheduler_type: ddpm
+output_dir: diffusion/monte_carlo_results/walker2d_unconditional_ddpm/
+max_test_samples: 1000

@@ -16,8 +16,10 @@ class EnsembleDynamics(BaseDynamics):
         optim: torch.optim.Optimizer,
         scaler: StandardScaler,
         terminal_fn: Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray],
+        classifier = None,
         penalty_coef: float = 0.0,
-        uncertainty_mode: str = "aleatoric"
+        uncertainty_mode: str = "aleatoric",
+        device: Optional[torch.device] = None
     ) -> None:
         super().__init__(model, optim)
         self.scaler = scaler
@@ -25,6 +27,57 @@ class EnsembleDynamics(BaseDynamics):
         self._penalty_coef = penalty_coef
         self._uncertainty_mode = uncertainty_mode
 
+        self.classifier_model = classifier['model']
+        self.classifier_thr= classifier['thr']
+        self.classifier_name = classifier['name'] if 'name' in classifier else None
+        self.classifier_mean = classifier['mean'] if 'mean' in classifier else None
+        self.classifier_std = classifier['std'] if 'std' in classifier else None
+        self.device = device if device is not None else torch.device("cpu")
+        print("training log mean and std of classifier: ", self.classifier_mean, self.classifier_std)
+
+    def _return_kde_penalty(self, state, action, reward=None, type= "linear", alpha = 0.1):
+
+        """
+        Version with optimized IQR filtering.
+
+        Returns:
+            tuple: (weight, log_probs) where weight is the penalty and log_probs is the raw likelihood
+        """
+
+        if self.classifier_name is None:
+            input_np = np.concatenate([state, action], axis=1)
+        else:
+            input_np = torch.cat([action.squeeze(1), reward.view(-1, 1)], dim=1)
+        log_probs = self.classifier_model.score_samples(input_np, self.device)
+        if isinstance(log_probs, torch.Tensor):
+            log_probs = log_probs.detach().cpu().numpy()
+        # Store raw log_probs before normalization for returning
+        raw_log_probs = log_probs.copy()
+        # print('log_probs mean and std: ', log_probs.mean(), log_probs.std())
+        if self.classifier_mean is not None and self.classifier_std is not None:
+            log_probs = (log_probs - self.classifier_mean) / self.classifier_std
+        if type == "linear":
+
+            log_weight = self.classifier_thr - log_probs #high means more likely to be OOD
+            q1, q3 = np.percentile(log_weight, [25, 75])
+            upper_bound = q3 + 1.5 * (q3 - q1)
+            weight = np.clip(log_weight, a_min=0, a_max=upper_bound)
+        elif type == "inverse":
+            weight = np.where(
+                log_probs < self.classifier_thr,
+                np.exp(self.classifier_thr) / (np.exp(log_probs) + 1e-6),
+                0.0
+            )
+        elif type == "tanh":
+            weight = (np.tanh(0.1*(-log_probs + self.classifier_thr)))
+            # print(weight.mean(), weight.std())
+        elif type == "softplus": #smooth and stable
+            weight = np.log(1 + np.exp(-log_probs)).numpy()
+        #plot the weights in histogram
+        # Plotting moved to algo/mopo.py:rollout_transitions() for better frequency control
+
+        return weight, raw_log_probs
+    
     @ torch.no_grad()
     def step(
         self,
@@ -54,21 +107,22 @@ class EnsembleDynamics(BaseDynamics):
         info["raw_reward"] = reward
 
         if self._penalty_coef:
-            if self._uncertainty_mode == "aleatoric":
-                penalty = np.amax(np.linalg.norm(std, axis=2), axis=0)
-            elif self._uncertainty_mode == "pairwise-diff":
-                next_obses_mean = mean[..., :-1]
-                next_obs_mean = np.mean(next_obses_mean, axis=0)
-                diff = next_obses_mean - next_obs_mean
-                penalty = np.amax(np.linalg.norm(diff, axis=2), axis=0)
-            elif self._uncertainty_mode == "ensemble_std":
-                next_obses_mean = mean[..., :-1]
-                penalty = np.sqrt(next_obses_mean.var(0).mean(1))
-            else:
-                raise ValueError
-            penalty = np.expand_dims(penalty, 1).astype(np.float32)
-            assert penalty.shape == reward.shape
-            reward = reward - self._penalty_coef * penalty
+            # if self._uncertainty_mode == "aleatoric":
+            #     penalty = np.amax(np.linalg.norm(std, axis=2), axis=0)
+            # elif self._uncertainty_mode == "pairwise-diff":
+            #     next_obses_mean = mean[..., :-1]
+            #     next_obs_mean = np.mean(next_obses_mean, axis=0)
+            #     diff = next_obses_mean - next_obs_mean
+            #     penalty = np.amax(np.linalg.norm(diff, axis=2), axis=0)
+            # elif self._uncertainty_mode == "ensemble_std":
+            #     next_obses_mean = mean[..., :-1]
+            #     penalty = np.sqrt(next_obses_mean.var(0).mean(1))
+            # else:
+            #     raise ValueError
+            # penalty = np.expand_dims(penalty, 1).astype(np.float32)
+            # assert penalty.shape == reward.shape
+            penalty, log_prob = self._return_kde_penalty(next_obs, action, type='tanh')
+            reward = reward - self._penalty_coef * penalty.reshape(-1,1)
             info["penalty"] = penalty
         
         return next_obs, reward, terminal, info
