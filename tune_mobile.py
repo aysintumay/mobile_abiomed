@@ -39,7 +39,7 @@ import yaml
 def get_args():
     print("Running", __file__)
     config_parser = argparse.ArgumentParser(add_help=False)
-    config_parser.add_argument("--config", type=str, default="config_gormpo/halfcheetah_medium_expert_72.5.yaml")
+    config_parser.add_argument("--config", type=str, default="config_gormpo/hopper_medium_expert_78.yaml")
     config_args, remaining_argv = config_parser.parse_known_args()
     if config_args.config:
         with open(config_args.config, "r") as f:
@@ -49,7 +49,7 @@ def get_args():
         config = {}
     parser = argparse.ArgumentParser(parents=[config_parser])
     parser.add_argument("--algo-name", type=str, default="mobile_gormpo")
-    parser.add_argument("--task", type=str, default="walker2d-medium-expert-v2")
+    parser.add_argument("--task", type=str, default="hopper-medium-expert-v2")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--device", type=str, default="cuda:3" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--dataset-path", type=str, default=None, help="Path to saved d4rl dataset pickle file")
@@ -420,11 +420,11 @@ if __name__ == "__main__":
         args.dynamics_path = os.path.abspath(args.dynamics_path)
     # args.device = util.device
     args.devid = int(args.device.split(":")[-1]) if "cuda" in args.device else 0
-    os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.devid},{args.devid+5}" # Let Ray handle GPU assignment, but ensure we have 2 GPUs available
+    os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.devid},{args.devid+1}" # Let Ray handle GPU assignment, but ensure we have 2 GPUs available
     ray.init(num_gpus=2)
     # ray.init()
     config = {}
-    penalty_coef = [0.1,0.3, 0.5,0.7]
+    penalty_coef = [0.05,0.1,0.2]
     # penalty_coef = [0.05, 0.1]
     seeds = list(range(1))
     config["reward_penalty_coef"] = tune.grid_search(penalty_coef)

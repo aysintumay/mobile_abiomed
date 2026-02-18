@@ -30,7 +30,7 @@ default_args = {
     "real_ratio": 0.05,
     "load_dynamics_path": None,
 
-    "epoch": 1000,
+    "epoch": 3000,
     "step_per_epoch": 1000,
     "eval_episodes": 100,
     "batch_size": 256,
