@@ -528,13 +528,14 @@ class VAE(nn.Module):
         print(f"Metadata saved to: {save_path}_meta_data.pkl")
 
     @classmethod
-    def load_model(cls, save_path: str, hidden_dims: List[int] = [256, 128]):
+    def load_model(cls, save_path: str, hidden_dims: List[int] = [256, 128], device: str = None):
         """
         Load a saved VAE model.
 
         Args:
             save_path: Base path for loading (without extension)
             hidden_dims: Hidden layer dimensions (must match saved model)
+            device: Device to load model onto (overrides saved device)
 
         Returns:
             Dictionary with loaded VAE model and metadata
@@ -543,16 +544,19 @@ class VAE(nn.Module):
         with open(f"{save_path}_meta_data.pkl", 'rb') as f:
             metadata = pickle.load(f)
 
+        # Use provided device or fall back to saved device
+        load_device = device if device is not None else metadata['device']
+
         # Create model with saved configuration
         model = cls(
             input_dim=metadata['input_dim'],
             latent_dim=metadata['latent_dim'],
             hidden_dims=hidden_dims,
-            device=metadata['device']
+            device=load_device
         )
 
         # Load model state dict
-        model.load_state_dict(torch.load(f"{save_path}_model.pth", map_location=metadata['device']))
+        model.load_state_dict(torch.load(f"{save_path}_model.pth", map_location=load_device))
 
         # Restore threshold
         model.threshold = metadata['threshold']
@@ -562,7 +566,7 @@ class VAE(nn.Module):
         print(f"Threshold: {model.threshold}")
 
         model_dict = {
-            'model': model.to(metadata['device']),
+            'model': model.to(load_device),
             'thr': model.threshold,
             'mean': metadata["mean"],
             'std': metadata["std"]

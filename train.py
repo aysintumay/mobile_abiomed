@@ -56,12 +56,7 @@ def get_args():
     parser.add_argument("--device", type=str, default="cuda:3" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--dataset-path", type=str, default=None, help="Path to saved d4rl dataset pickle file")
     parser.add_argument('--dynamics_path', type=str, default="")
-    known_args, _ = parser.parse_known_args()
-    default_args = loaded_args[known_args.task]
-    for arg_key, default_value in default_args.items():
-        parser.add_argument(f'--{arg_key}', default=default_value, type=type(default_value))
-
-
+    parser.add_argument('--reward_penalty_coef', type=float, default=0.5)
     parser.set_defaults(**config)
 
     # 5. Final parse (command line still wins over YAML)
@@ -294,7 +289,7 @@ def train(args=get_args()):
         scaler,
         termination_fn,
         classifier=classifier_dict,
-        penalty_coef = args.penalty_coef,
+        penalty_coef = args.reward_penalty_coef,
         device=args.device
 
     )

@@ -227,9 +227,9 @@ def run_exp(tune_config):
     if "vae" in args.classifier_model_name:
         classifier = VAE(
             # hidden_dims= args.vae_hidden_dims,
-            device=args_for_exp.device 
+            device=args_for_exp.device
         ).to(args_for_exp.device )
-        classifier_dict = classifier.load_model(args_for_exp.classifier_model_name)
+        classifier_dict = classifier.load_model(args_for_exp.classifier_model_name, device=args_for_exp.device)
         print("vae laoded")
     elif "realnvp" in args_for_exp.classifier_model_name:
         classifier = RealNVP(
@@ -312,7 +312,7 @@ def run_exp(tune_config):
         scaler,
         termination_fn,
         classifier=classifier_dict,
-        penalty_coef = args_for_exp.penalty_coef,
+        penalty_coef = args_for_exp.reward_penalty_coef,
         device=args_for_exp.device
 
     )
