@@ -2,3 +2,15 @@ task,dataset,seed,final_normalized_reward,final_reward_std
 hopper-medium-expert-v2,hopper_medium_expert_sparse_78,42,11.648516534323909,0.6868371892144494
 hopper-medium-expert-v2,hopper_medium_expert_sparse_78,123,25.932718726840708,14.565052274340745
 hopper-medium-expert-v2,hopper_medium_expert_sparse_78,456,70.96094201937608,48.69578960253181
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,42,11.648516534323909,0.6868371892144494
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,123,25.932718726840708,14.565052274340745
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,42,11.648516534323909,0.6868371892144494
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,123,25.932718726840708,14.565052274340745
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,456,70.96094201937608,48.69578960253181
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,42,11.648516534323909,0.6868371892144494
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,123,25.932718726840708,14.565052274340745
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,456,70.96094201937608,48.69578960253181
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,42,110.84864780897068,6.460607913640207
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,42,112.94400615297646,0.7278278777787316
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,123,60.64652137462437,50.23789594409912
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,456,18.426007986636503,0.6921279405428148

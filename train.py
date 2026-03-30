@@ -57,6 +57,10 @@ def get_args():
     parser.add_argument("--dataset-path", type=str, default=None, help="Path to saved d4rl dataset pickle file")
     parser.add_argument('--dynamics_path', type=str, default="")
     parser.add_argument('--reward_penalty_coef', type=float, default=0.5)
+    parser.add_argument('--classifier_model_name', type=str, default='')
+    parser.add_argument('--use_wandb', action='store_true', default=True)
+    parser.add_argument('--wandb_project', type=str, default='mobile-gormpo')
+    parser.add_argument('--wandb_entity', type=str, default=None)
     parser.set_defaults(**config)
     known_args, _ = parser.parse_known_args()
     default_args = loaded_args[known_args.task]
@@ -213,14 +217,14 @@ def train(args=get_args()):
         classifier = VAE(
             # hidden_dims= args.vae_hidden_dims,
             device=args.device 
-        ).to(args.device )
-        classifier_dict = classifier.load_model(args.classifier_model_name)
+        ).to(args.device)
+        classifier_dict = classifier.load_model(args.classifier_model_name, device=args.device)
         print("vae laoded")
     elif "realnvp" in args.classifier_model_name:
         classifier = RealNVP(
         device=args.device 
         ).to(args.device )
-        classifier_dict = classifier.load_model(args.classifier_model_name)
+        classifier_dict = classifier.load_model(args.classifier_model_name, device=args.device)
     elif "kde" in args.classifier_model_name:
         # Extract device ID from args.device (e.g., "cuda:0" -> 0)
         # devid = int(args.device.split(":")[-1]) if "cuda" in args.device else 0
@@ -339,9 +343,22 @@ def train(args=get_args()):
     )
 
     # log
+    _clf = args.classifier_model_name
+    if "diffusion" in _clf:
+        args.classifier_type = "diffusion"
+    elif "realnvp" in _clf:
+        args.classifier_type = "realnvp"
+    elif "vae" in _clf:
+        args.classifier_type = "vae"
+    elif "kde" in _clf:
+        args.classifier_type = "kde"
+    elif "neuralODE" in _clf:
+        args.classifier_type = "neuralODE"
+    else:
+        args.classifier_type = ""
     log_dirs = make_log_dirs(
         args.task, args.algo_name, args.seed, vars(args),
-        record_params=["penalty_coef", "rollout_length"]
+        record_params=["penalty_coef", "rollout_length", "classifier_type"]
     )
     # key: output file name, value: output handler type
     output_config = {
@@ -350,6 +367,15 @@ def train(args=get_args()):
         "dynamics_training_progress": "csv",
         "tb": "tensorboard"
     }
+    if args.use_wandb:
+        import wandb
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=f"{args.task}__{args.algo_name}__seed{args.seed}",
+            config=vars(args),
+        )
+        output_config["wandb_run"] = "wandb"
     logger = Logger(log_dirs, output_config)
     logger.log_hyperparameters(vars(args))
 

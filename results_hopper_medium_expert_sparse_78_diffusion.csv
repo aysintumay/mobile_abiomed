@@ -1,0 +1,4 @@
+task,dataset,seed,final_normalized_reward,final_reward_std
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,42,113.4482088849011,0.8404898420005126
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,123,113.3569069228874,3.875574749850669
+hopper-medium-expert-v2,hopper_medium_expert_sparse_78,456,112.32720774183842,10.77348771429935

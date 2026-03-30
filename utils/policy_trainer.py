@@ -4,6 +4,7 @@ import os
 import numpy as np
 import torch
 import gym
+import matplotlib.pyplot as plt
 
 from typing import Optional, Dict, List, Tuple
 from tqdm import tqdm
@@ -11,6 +12,11 @@ from collections import deque
 from utils.buffer import ReplayBuffer
 from utils.logger import Logger
 from policies import BasePolicy
+
+try:
+    import wandb as _wandb
+except ImportError:
+    _wandb = None
 
 
 # model-based policy trainer
@@ -46,11 +52,31 @@ class PolicyTrainer:
         self._eval_episodes = eval_episodes
         self.lr_scheduler = lr_scheduler
 
+    def _log_reward_plot(self, reward_history: List[Tuple], num_timesteps: int) -> None:
+        """Log a matplotlib reward curve (mean ± std) to wandb."""
+        if _wandb is None or _wandb.run is None:
+            return
+        steps = [r[0] for r in reward_history]
+        means = np.array([r[1] for r in reward_history])
+        stds  = np.array([r[2] for r in reward_history])
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(steps, means, linewidth=2, label="mean")
+        ax.fill_between(steps, means - stds, means + stds, alpha=0.25, label="±1 std")
+        ax.set_xlabel("Timestep")
+        ax.set_ylabel("Episode Reward")
+        ax.set_title("Eval Reward over Training")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        _wandb.log({"eval/reward_curve": _wandb.Image(fig)}, step=num_timesteps)
+        plt.close(fig)
+
     def train(self) -> Dict[str, float]:
         start_time = time.time()
 
         num_timesteps = 0
         last_10_performance = deque(maxlen=10)
+        reward_history: List[Tuple] = []  # (timestep, mean, std)
         # train loop
         for e in range(1, self._epoch + 1):
 
@@ -96,14 +122,24 @@ class PolicyTrainer:
                     last_10_performance.append(norm_ep_rew_mean)
                     self.logger.logkv("eval/normalized_episode_reward", norm_ep_rew_mean)
                     self.logger.logkv("eval/normalized_episode_reward_std", norm_ep_rew_std)
+                    reward_history.append((num_timesteps, norm_ep_rew_mean, norm_ep_rew_std))
                 else:
                     last_10_performance.append(ep_reward_mean)
                     self.logger.logkv("eval/episode_reward", ep_reward_mean)
                     self.logger.logkv("eval/episode_reward_std", ep_reward_std)
+                    reward_history.append((num_timesteps, ep_reward_mean, ep_reward_std))
                 self.logger.logkv("eval/episode_length", ep_length_mean)
                 self.logger.logkv("eval/episode_length_std", ep_length_std)
                 self.logger.set_timestep(num_timesteps)
                 self.logger.dumpkvs(exclude=["dynamics_training_progress"])
+
+                # log reward curve and episode histogram to wandb
+                if _wandb is not None and _wandb.run is not None:
+                    self._log_reward_plot(reward_history, num_timesteps)
+                    _wandb.log(
+                        {"eval/episode_reward_hist": _wandb.Histogram(eval_info["eval/episode_reward"])},
+                        step=num_timesteps,
+                    )
             
                 # save checkpoint
                 torch.save(self.policy.state_dict(), os.path.join(self.logger.checkpoint_dir, "policy.pth"))
@@ -111,8 +147,8 @@ class PolicyTrainer:
         self.logger.log("total time: {:.2f}s".format(time.time() - start_time))
         torch.save(self.policy.state_dict(), os.path.join(self.logger.model_dir, "policy.pth"))
         self.policy.dynamics.save(self.logger.model_dir)
+        self.policy.plot_pessimism_ratio()
         self.logger.close()
-    
         return {"last_10_performance": np.mean(last_10_performance)}
 
     def _evaluate(self) -> Dict[str, List[float]]:

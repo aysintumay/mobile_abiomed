@@ -1,0 +1,11 @@
+{
+  "task": "walker2d-medium-expert-v2",
+  "output_dir": "results/tsne_policy_vs_dataset/walker2d-medium-expert-v2",
+  "num_models": 1,
+  "models": [
+    {
+      "label": "MOBILE"
+    }
+  ],
+  "combined_panel": "results/tsne_policy_vs_dataset/walker2d-medium-expert-v2/combined_panel.png"
+}

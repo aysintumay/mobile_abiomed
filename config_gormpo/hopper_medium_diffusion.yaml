@@ -1,0 +1,10 @@
+classifier_model_name: /public/gormpo/models/hopper/diffusion/checkpoint.pt
+density_model: diffusion
+
+task: hopper-medium-v2
+penalty_coef: 1.5
+reward-penalty-coef: 0.5
+seed: 1
+epoch: 3000
+penalty_type: 'tanh'
+rollout-length: 5

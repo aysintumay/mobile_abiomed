@@ -1,0 +1,4 @@
+task,dataset,seed,final_normalized_reward,final_reward_std
+walker2d-medium-v2,walker2d_medium_v2,42,90.77838722917917,2.378385365281503
+walker2d-medium-v2,walker2d_medium_v2,123,91.90258941885325,0.2976497806623279
+walker2d-medium-v2,walker2d_medium_v2,456,90.5468354821384,0.28584427981750027

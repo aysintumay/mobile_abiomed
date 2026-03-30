@@ -1,0 +1,11 @@
+classifier_model_name: /public/gormpo/models/walker2d_medium_expert_sparse_3/diffusion/checkpoint.pt
+density_model: diffusion
+
+task: walker2d-medium-expert-v2
+data_path: /public/d4rl/sparse_datasets/walker2d_medium_expert_sparse_73.pkl
+
+reward-penalty-coef: 0.05
+seed: 1
+epoch: 1000
+penalty_type: 'tanh'
+rollout-length: 3

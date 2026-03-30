@@ -1,0 +1,9 @@
+task: hopper-medium-v2
+penalty_coef: 1.5
+reward_penalty_coef: 0.3
+seed: 1
+epoch: 3000
+penalty_type: tanh
+classifier_model_name: /public/gormpo/models/hopper_normal/vae
+density_model: vae
+target_dim: 14  # 11 (obs) + 3 (action) for Hopper

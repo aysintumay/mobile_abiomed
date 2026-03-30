@@ -58,6 +58,8 @@ class MOBILEPolicy(BasePolicy):
         self._deteterministic_backup = deterministic_backup
         self._max_q_backup = max_q_backup
 
+        self.pessimism_ratios = []
+
     def train(self) -> None:
         self.actor.train()
         self.critics.train()
@@ -100,6 +102,7 @@ class MOBILEPolicy(BasePolicy):
 
         num_transitions = 0
         rewards_arr = np.array([])
+        penalties_arr = np.array([])
         rollout_transitions = defaultdict(list)
 
         # rollout
@@ -116,18 +119,31 @@ class MOBILEPolicy(BasePolicy):
 
             num_transitions += len(observations)
             rewards_arr = np.append(rewards_arr, rewards.flatten())
+            if "penalty" in info:
+                penalties_arr = np.append(penalties_arr, np.asarray(info["penalty"]).flatten())
 
             nonterm_mask = (~terminals).flatten()
             if nonterm_mask.sum() == 0:
                 break
 
             observations = next_observations[nonterm_mask]
-        
+
         for k, v in rollout_transitions.items():
             rollout_transitions[k] = np.concatenate(v, axis=0)
 
-        return rollout_transitions, \
-            {"num_transitions": num_transitions, "reward_mean": rewards_arr.mean()}
+        rollout_info = {"num_transitions": num_transitions, "reward_mean": rewards_arr.mean()}
+        if len(penalties_arr) > 0:
+            rollout_info["dynamics_penalty_mean"] = penalties_arr.mean()
+            rollout_info["dynamics_penalty_std"] = penalties_arr.std()
+
+            # Pessimism ratio: E[λσ] / E[r_true]
+            mean_r_true = np.mean(rewards_arr)
+            if abs(mean_r_true) > 1e-8:
+                self.pessimism_ratios.append(np.mean(penalties_arr) / mean_r_true)
+            else:
+                self.pessimism_ratios.append(np.nan)
+
+        return rollout_transitions, rollout_info
     
     @ torch.no_grad()
     def compute_lcb(self, obss: torch.Tensor, actions: torch.Tensor):
@@ -196,9 +212,13 @@ class MOBILEPolicy(BasePolicy):
 
         self._sync_weight()
 
+        fake_start = len(real_batch["rewards"])
+        fake_penalty = penalty[fake_start:]
         result = {
             "loss/actor": actor_loss.item(),
-            "loss/critic": critic_loss.item()
+            "loss/critic": critic_loss.item(),
+            "penalty/lcb_mean": fake_penalty.mean().item(),
+            "penalty/lcb_std": fake_penalty.std().item(),
         }
 
         if self._is_auto_alpha:
@@ -206,3 +226,37 @@ class MOBILEPolicy(BasePolicy):
             result["alpha"] = self._alpha.item()
 
         return result
+    
+    def plot_pessimism_ratio(self):
+        """
+        Plot E[λσ] / E[r_true] across rollout iterations.
+
+        A ratio > 1 means the average penalty exceeds the true reward → pessimistic.
+        A ratio < 1 means the policy retains most of its reward signal → less pessimistic.
+        Negative values mean r_true < 0 on average (penalty overshoots the reward).
+        """
+        if len(self.pessimism_ratios) == 0:
+            print("No pessimism ratio data to plot.")
+            return
+
+        import matplotlib.pyplot as plt
+        import wandb
+
+        ratios = np.array(self.pessimism_ratios, dtype=float)
+        iterations = np.arange(len(ratios))
+
+        fig, ax = plt.subplots(figsize=(10, 6), dpi=300)
+        ax.plot(iterations, ratios, color='crimson', linewidth=2, label=r'$E[\lambda\sigma] / E[r_\mathrm{true}]$')
+        ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
+        ax.axhline(1, color='gray', linewidth=0.8, linestyle=':', label='ratio = 1 (penalty = reward)')
+        ax.set_xlabel('Rollout Iteration', fontsize=16)
+        ax.set_ylabel(r'Pessimism Ratio $E[\lambda\sigma] / E[r_\mathrm{true}]$', fontsize=14)
+        ax.set_title('Training Pessimism Ratio Across Rollout Iterations', fontsize=18)
+        ax.legend(fontsize=14)
+        ax.grid(True, alpha=0.3)
+        ax.tick_params(axis='both', which='major', labelsize=14)
+
+        plt.tight_layout()
+        wandb.log({"pessimism_ratio_evolution": wandb.Image(fig)})
+        plt.close()
+        print(f"Plotted pessimism ratio for {len(self.pessimism_ratios)} rollout iterations.")

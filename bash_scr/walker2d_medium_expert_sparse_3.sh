@@ -2,7 +2,7 @@
 
 TASK="walker2d-medium-expert-v2"
 DATASET_PATH="/public/d4rl/sparse_datasets/walker2d_medium_expert_sparse_73.pkl"
-DEVICE="cuda:2"
+DEVICE="cuda:0"
 DATASET_NAME=$(basename "$DATASET_PATH" .pkl)
 RESULTS_FILE="results_${DATASET_NAME}.csv"
 
@@ -26,12 +26,13 @@ do
     --dataset-path "$DATASET_PATH" \
     --device $DEVICE \
     --seed $seed \
-    --epoch 1000 \
+    --epoch 3000 \
+    --reward_penalty_coef 0.0 \
     --task $TASK \
     --dynamics_path "$DYNAMICS_PATH"
 
        # Find the most recent log directory for this seed (sort by modification time)
-    LOG_DIR=$(find log/$TASK/"mobile&penalty_coef=1.5&rollout_length=5" -type d -name "seed_${seed}&timestamp_*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | cut -d' ' -f2-)
+    LOG_DIR=$(find "log/$TASK/" -mindepth 2 -maxdepth 2 -type d -name "seed_${seed}&timestamp_*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | cut -d' ' -f2-)
 
     if [ -n "$LOG_DIR" ]; then
         CSV_FILE="$LOG_DIR/record/policy_training_progress.csv"

@@ -424,7 +424,7 @@ if __name__ == "__main__":
     ray.init(num_gpus=2)
     # ray.init()
     config = {}
-    penalty_coef = [0.05,0.1,0.2]
+    penalty_coef = [0.6,0.7,0,8,0.9]
     # penalty_coef = [0.05, 0.1]
     seeds = list(range(1))
     config["reward_penalty_coef"] = tune.grid_search(penalty_coef)

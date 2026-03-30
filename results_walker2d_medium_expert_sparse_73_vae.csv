@@ -1,0 +1,7 @@
+task,dataset,seed,final_normalized_reward,final_reward_std
+walker2d-medium-expert-v2,walker2d_medium_expert_sparse_73,42,112.2985525924213,0.7100577800897323
+walker2d-medium-expert-v2,walker2d_medium_expert_sparse_73,123,117.84458352988807,0.32337175330913015
+walker2d-medium-expert-v2,walker2d_medium_expert_sparse_73,42,111.96869247235159,9.014001955910791
+walker2d-medium-expert-v2,walker2d_medium_expert_sparse_73,456,120.44283051669002,1.5618122206512657
+walker2d-medium-expert-v2,walker2d_medium_expert_sparse_73,123,117.84458352988807,0.32337175330913015
+walker2d-medium-expert-v2,walker2d_medium_expert_sparse_73,456,120.44283051669002,1.5618122206512657

@@ -1,0 +1,4 @@
+task,dataset,seed,final_normalized_reward,final_reward_std
+halfcheetah-medium-v2,halfcheetah_medium_v2,42,74.31639948423701,3.1594772712370323
+halfcheetah-medium-v2,halfcheetah_medium_v2,123,76.3970299135126,6.849428243421614
+halfcheetah-medium-v2,halfcheetah_medium_v2,456,74.30279369953865,2.832703908940566

@@ -1,0 +1,11 @@
+classifier_model_name: /public/gormpo/models/halfcheetah_medium_expert_sparse_3/diffusion/checkpoint.pt
+density_model: diffusion
+
+task: halfcheetah-medium-expert-v2
+data_path: /public/d4rl/sparse_datasets/halfcheetah_medium_expert_sparse_72.5.pkl
+
+reward-penalty-coef: 0.3
+seed: 1
+epoch: 1000
+penalty_type: 'tanh'
+rollout-length: 5

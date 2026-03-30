@@ -497,7 +497,7 @@ class RealNVP(nn.Module):
         print(f"Metadata saved to: {save_path}_meta_data.pkl")
 
     @classmethod
-    def load_model(cls, save_path: str, hidden_dims: List[int] = [256, 256]):
+    def load_model(cls, save_path: str, hidden_dims: List[int] = [256, 256], device: str = 'cpu') -> dict:
         """
         Load a saved RealNVP model.
 
@@ -517,11 +517,11 @@ class RealNVP(nn.Module):
             input_dim=metadata['input_dim'],
             num_layers=metadata['num_layers'],
             hidden_dims=hidden_dims,
-            device=metadata['device']
+            device=device
         )
 
         # Load model state dict
-        model.load_state_dict(torch.load(f"{save_path}_model.pth", map_location=metadata['device']))
+        model.load_state_dict(torch.load(f"{save_path}_model.pth", map_location=device))
         # model.to(cls.device)
 
         # Restore threshold

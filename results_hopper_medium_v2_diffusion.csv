@@ -1,0 +1,4 @@
+task,dataset,seed,final_normalized_reward,final_reward_std
+hopper-medium-v2,hopper_medium_v2,42,74.70504307735725,28.891206008576198
+hopper-medium-v2,hopper_medium_v2,123,103.33451709386057,0.7645149145926663
+hopper-medium-v2,hopper_medium_v2,456,102.73193522705132,0.7289906913369022

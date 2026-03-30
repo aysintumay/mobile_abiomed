@@ -1,0 +1,11 @@
+{
+  "task": "hopper-medium-expert-v2",
+  "output_dir": "results/tsne_policy_vs_dataset/hopper-medium-expert-v2",
+  "num_models": 1,
+  "models": [
+    {
+      "label": "MOBILE"
+    }
+  ],
+  "combined_panel": "results/tsne_policy_vs_dataset/hopper-medium-expert-v2/combined_panel.png"
+}

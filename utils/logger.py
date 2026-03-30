@@ -236,10 +236,38 @@ class TensorBoardOutputHandler(KVWriter):
             self.writer.close()
 
 
+class WandbOutputHandler(KVWriter):
+    """
+    Logs key/value pairs to Weights & Biases.
+    Requires wandb.init() to be called before the first writekvs().
+    """
+    def __init__(self, _: str) -> None:  # filename arg ignored
+        try:
+            import wandb
+            self._wandb = wandb
+        except ImportError:
+            self._wandb = None
+            warnings.warn("wandb not installed; WandbOutputHandler will be a no-op.")
+        self.handler_name = "wandb"
+        super().__init__()
+
+    def writekvs(self, kvs: Dict) -> None:
+        if self._wandb is None or self._wandb.run is None:
+            return
+        step = kvs.get(DEFAULT_X_NAME)
+        log_dict = {k: float(v) for k, v in kvs.items() if k != DEFAULT_X_NAME}
+        self._wandb.log(log_dict, step=int(step) if step is not None else None)
+
+    def close(self) -> None:
+        if self._wandb and self._wandb.run:
+            self._wandb.finish()
+
+
 HANDLER = {
     "stdout": StandardOutputHandler,
     "csv": CSVOutputHandler,
-    "tensorboard": TensorBoardOutputHandler
+    "tensorboard": TensorBoardOutputHandler,
+    "wandb": WandbOutputHandler,
 }
 
 

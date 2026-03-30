@@ -12,4 +12,3 @@ classifier_model_name: /public/gormpo/models/hopper_medium_expert_sparse_3/vae
 density_model: vae
 target_dim: 14  # 17 (obs) + 6 (action) for HalfCheetah
 dynamics_path: log/hopper-medium-expert-v2/seed_42&timestamp_26-0112-030627/model/
-device: cuda:2
